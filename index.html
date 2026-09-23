@@ -74,6 +74,18 @@
               <div class="dashboard-list" id="district-effects"></div>
             </section>
           </div>
+          <section class="schematic-map" aria-labelledby="map-title">
+            <div class="map-heading">
+              <div>
+                <p class="eyebrow">Визуализация сценария</p>
+                <h3 id="map-title">Схема районов</h3>
+              </div>
+              <p>Цвет показывает итоговый индекс района. Наведите курсор на район, чтобы увидеть его результат.</p>
+            </div>
+            <div class="map-legend" aria-label="Легенда карты"><span><i class="map-dot map-dot-low"></i>ниже 50</span><span><i class="map-dot map-dot-mid"></i>50–59</span><span><i class="map-dot map-dot-high"></i>60 и выше</span></div>
+            <div id="district-map" class="district-map" aria-live="polite"></div>
+            <p class="map-note">Схема условная: она визуализирует синтетические районы модели, а не реальные административные границы Астаны.</p>
+          </section>
           <h3 class="ai-title">AI-анализ сценария</h3>
           <div class="ai-loader" id="ai-loader" hidden><span></span><span></span><span></span><b>AI анализирует сценарий…</b></div>
           <div class="ai-analysis" id="ai-analysis"></div>

@@ -164,6 +164,36 @@ function renderResultDetails(spent) {
   document.querySelector('#result-details').innerHTML = cards.map((card) => '<div class="result-detail"><strong>' + card[0] + '</strong>' + card[1] + '</div>').join('');
   document.querySelector('#direction-scores').innerHTML = DIRECTIONS.map((direction) => '<div class="dashboard-item"><span>' + direction.name + '</span><b>' + simulation.directionScores[direction.id] + '/100</b></div>').join('');
   document.querySelector('#district-effects').innerHTML = districtNames.map((district) => '<div class="dashboard-item"><span>' + district + '</span><b>' + round(simulation.after.districtScores[district]) + '/100</b><small>' + (simulation.districtDeltas[district] >= 0 ? '+' : '') + simulation.districtDeltas[district] + '</small></div>').join('');
+  renderDistrictMap();
+}
+
+function districtMapColor(score) {
+  if (score < 50) return '#d96d4b';
+  if (score < 55) return '#dca85b';
+  if (score < 60) return '#67a783';
+  return '#2f765d';
+}
+
+function renderDistrictMap() {
+  // This is a deliberately schematic layout. Districts in the model are
+  // synthetic, so it must not be mistaken for real administrative borders.
+  const shapes = {
+    'Алматы': { points: '42,46 207,24 254,119 208,190 70,171', label: [137, 105] },
+    'Есиль': { points: '207,24 415,43 450,154 330,205 254,119', label: [326, 106] },
+    'Байконур': { points: '450,60 558,130 524,265 395,260 330,205 450,154', label: [456, 175] },
+    'Сарыарка': { points: '70,171 208,190 330,205 300,340 135,325 45,260', label: [187, 257] },
+    'Нура': { points: '330,205 395,260 430,350 300,340', label: [358, 293] },
+  };
+  const map = districtNames.map((district) => {
+    const shape = shapes[district];
+    if (!shape) return '';
+    const score = round(simulation.after.districtScores[district]);
+    const delta = simulation.districtDeltas[district];
+    const direction = delta >= 0 ? '+' : '';
+    const active = Math.abs(delta) > 0.001;
+    return '<g class="map-district' + (active ? ' is-affected' : '') + '" tabindex="0" role="img" aria-label="' + district + ': ' + score + ' из 100, изменение ' + direction + delta + '"><title>' + district + ': ' + score + '/100, изменение ' + direction + delta + '</title><polygon points="' + shape.points + '" fill="' + districtMapColor(score) + '"></polygon><text x="' + shape.label[0] + '" y="' + (shape.label[1] - 7) + '">' + district + '</text><text class="map-score" x="' + shape.label[0] + '" y="' + (shape.label[1] + 15) + '">' + score + ' <tspan>/100</tspan></text><g class="map-change" transform="translate(' + (shape.label[0] - 25) + ' ' + (shape.label[1] + 26) + ')"><rect width="50" height="17" rx="8.5"></rect><text x="25" y="12">' + direction + delta + '</text></g></g>';
+  }).join('');
+  document.querySelector('#district-map').innerHTML = '<svg viewBox="0 0 600 380" role="img" aria-label="Схема пяти районов и их итоговых индексов"><path class="map-river" d="M15 210 C110 165 175 230 255 188 S415 142 585 190"></path>' + map + '<text class="map-caption" x="300" y="372">Синтетическая карта сценария</text></svg>';
 }
 
 grid.addEventListener('change', (event) => {
