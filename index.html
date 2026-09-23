@@ -24,13 +24,17 @@
         <div>
           <p class="eyebrow">Городской AI-симулятор</p>
           <h1>Пять решений.<br /><em>Один город.</em></h1>
-          <p class="hero-copy">Распределите городской бюджет так, чтобы улучшить жизнь в условной Астане. Выберите по одной инициативе в каждом направлении.</p>
+          <p class="hero-copy">Распределите фиксированный бюджет так, чтобы улучшить жизнь в условной Астане. Выберите ровно 5 мер: не более двух из одного направления.</p>
         </div>
-        <aside class="budget-card" id="budget-card" aria-label="Состояние бюджета">
+        <aside class="budget-card" id="budget-card" aria-label="Состояние бюджета" title="После прокрутки карточку можно перетащить мышью">
           <span>Остаток бюджета</span>
-          <strong id="budget-left">100</strong><b> млн ₸</b>
+          <strong id="budget-left">100</strong><b> усл. ед.</b>
           <div class="budget-track"><span id="budget-progress"></span></div>
-          <small id="budget-caption">0 из 100 млн ₸ распределено</small>
+          <small id="budget-caption">0 из 100 усл. ед. распределено</small>
+          <section class="confirm-panel" id="confirm-panel" hidden>
+            <div><p class="eyebrow">Проверка сценария</p><h2>Все 5 решений выбраны</h2><p>Подтвердите сценарий, чтобы зафиксировать его и получить итоговую оценку AI.</p></div>
+            <button class="confirm-button" id="confirm-button">Подтвердить решения</button>
+          </section>
         </aside>
       </section>
 
@@ -42,11 +46,6 @@
       <section class="decisions" aria-labelledby="decisions-title">
         <div class="section-heading"><div><p class="eyebrow">Ваши действия</p><h2 id="decisions-title">Выберите ровно 5 мероприятий</h2></div><p><span id="selection-count">0</span> из 5 решений выбрано</p></div>
         <div id="decision-grid" class="decision-grid"></div>
-      </section>
-
-      <section class="confirm-panel" id="confirm-panel" hidden>
-        <div><p class="eyebrow">Проверка сценария</p><h2>Все 5 решений выбраны</h2><p>Подтвердите сценарий, чтобы зафиксировать его и получить итоговую оценку AI.</p></div>
-        <button class="confirm-button" id="confirm-button">Подтвердить решения</button>
       </section>
 
       <section class="result-panel" id="result-panel" hidden aria-live="polite">
@@ -66,6 +65,7 @@
             </section>
           </div>
           <h3 class="ai-title">AI-анализ сценария</h3>
+          <div class="ai-loader" id="ai-loader" hidden><span></span><span></span><span></span><b>AI анализирует сценарий…</b></div>
           <div class="ai-analysis" id="ai-analysis"></div>
         </div>
         <div class="score"><strong id="score-value">—</strong><span>/ 100</span></div>

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -34,7 +35,7 @@ def create_prompt(payload: dict) -> str:
     before = simulation.get("before", {})
     after = simulation.get("after", {})
     formatted = "\n".join(
-        f"- {item.get('direction')}: {item.get('title')} | {item.get('price')} млн ₸ | "
+        f"- {item.get('direction')}: {item.get('title')} | {item.get('price')} условных единиц | "
         f"районы: {item.get('districts')} | лаг: {item.get('lag')} кв. | МАИ-приоритет: {item.get('ahpPriority')}"
         for item in selections
     )
@@ -63,7 +64,7 @@ E2=0.11, S1=0.11, S2=0.11, B1=0.09, B2=0.09, C1=0.10, C2=0.10.
 Score до: {before.get('score')}; после: {after.get('score')}; изменение: {simulation.get('delta')}.
 D_avg после: {after.get('average')}; D_min после: {after.get('minimum')};
 критические показатели (<40): {before.get('critical')} → {after.get('critical')}.
-Использовано бюджета: {payload.get('spent')} из {payload.get('budget')} млн ₸.
+Использовано бюджета: {payload.get('spent')} из {payload.get('budget')} условных единиц.
 Синергии: {synergy_text}.
 Оценки направлений: {direction_scores}.
 Изменение районных индексов: {district_deltas}.
@@ -82,10 +83,23 @@ N_crit, коды T1–C2, МАИ-приоритеты или JSON. Вместо 
 «средний уровень города», «самый слабый район», «критические проблемы».
 Называй меры человеческими названиями, а не только кодами M1–M14.
 
-Не предлагай потратить остаток бюджета на шестую меру: правила допускают ровно пять решений.
+Единственная валюта этой модели — «условные единицы». Никогда не упоминай тенге, ₸,
+миллионы или «млн» — даже в примерах расхода.
+Не называй остаток бюджета резервом, гибкостью или ограничением для дополнительных мер:
+правила допускают ровно пять решений, шестую меру добавить нельзя, а остаток не влияет на Score.
 Если сценарий можно улучшить, рекомендуй заменить одну из уже выбранных мер на другую или
 перенести районную меру в более нуждающийся район.
 """
+
+
+def normalize_analysis_units(text: str) -> str:
+    """Prevent an LLM from changing the synthetic model's unit into tenge."""
+    return re.sub(
+        r"(?:млн\.?|миллион(?:а|ов)?)\s*(?:₸|тенге)",
+        "условных единиц",
+        text,
+        flags=re.IGNORECASE,
+    )
 
 
 def analyze(payload: dict) -> str:
@@ -133,7 +147,7 @@ def analyze(payload: dict) -> str:
         text = "".join(text_parts).strip()
     if not text:
         raise RuntimeError("AI не вернул текстовый анализ.")
-    return text
+    return normalize_analysis_units(text)
 
 
 class AppHandler(SimpleHTTPRequestHandler):

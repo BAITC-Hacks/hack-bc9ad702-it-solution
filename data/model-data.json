@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0.0",
+  "metadata": {
+    "name": "Аким на 5 часов",
+    "source": "Датасет районов.docx",
+    "dataType": "synthetic",
+    "scale": "0–100; чем больше значение, тем лучше"
+  },
+  "model": {
+    "budget": 100,
+    "budgetUnit": "усл. ед.",
+    "horizonQuarters": 8,
+    "requiredDecisions": 5,
+    "maxMeasuresPerDirection": 2,
+    "criticalThreshold": 40,
+    "scoreWeights": { "average": 0.7, "minimum": 0.3, "criticalPenalty": 1 },
+    "formula": "Score = 0.7 × D_avg + 0.3 × D_min − N_crit"
+  },
+  "criteria": {
+    "T1": { "weight": 0.1, "label": "Разгрузка дорог" },
+    "T2": { "weight": 0.1, "label": "Доступность общественного транспорта" },
+    "E1": { "weight": 0.09, "label": "Озеленение" },
+    "E2": { "weight": 0.11, "label": "Качество воздуха" },
+    "S1": { "weight": 0.11, "label": "Школы и детсады" },
+    "S2": { "weight": 0.11, "label": "Поликлиники и медпомощь" },
+    "B1": { "weight": 0.09, "label": "Безопасность улиц" },
+    "B2": { "weight": 0.09, "label": "Безопасность дорожного движения" },
+    "C1": { "weight": 0.1, "label": "Надёжность ЖКХ" },
+    "C2": { "weight": 0.1, "label": "Скорость решения обращений" }
+  },
+  "directions": [
+    { "id": "transport", "name": "Транспорт", "icon": "↔", "criteria": ["T1", "T2"] },
+    { "id": "ecology", "name": "Экология", "icon": "✦", "criteria": ["E1", "E2"] },
+    { "id": "social", "name": "Социальная сфера", "icon": "⌂", "criteria": ["S1", "S2"] },
+    { "id": "safety", "name": "Безопасность", "icon": "◈", "criteria": ["B1", "B2"] },
+    { "id": "services", "name": "Городские сервисы", "icon": "◎", "criteria": ["C1", "C2"] }
+  ],
+  "districts": {
+    "Есиль": { "population": 0.27, "values": { "T1": 45, "T2": 62, "E1": 68, "E2": 72, "S1": 48, "S2": 55, "B1": 78, "B2": 60, "C1": 75, "C2": 70 } },
+    "Алматы": { "population": 0.24, "values": { "T1": 40, "T2": 75, "E1": 50, "E2": 55, "S1": 60, "S2": 65, "B1": 62, "B2": 52, "C1": 50, "C2": 60 } },
+    "Сарыарка": { "population": 0.2, "values": { "T1": 50, "T2": 70, "E1": 42, "E2": 40, "S1": 62, "S2": 68, "B1": 58, "B2": 55, "C1": 45, "C2": 55 } },
+    "Байконур": { "population": 0.13, "values": { "T1": 52, "T2": 68, "E1": 55, "E2": 50, "S1": 58, "S2": 60, "B1": 52, "B2": 58, "C1": 55, "C2": 58 } },
+    "Нура": { "population": 0.16, "values": { "T1": 55, "T2": 40, "E1": 45, "E2": 65, "S1": 38, "S2": 35, "B1": 55, "B2": 50, "C1": 60, "C2": 50 } }
+  },
+  "measures": [
+    { "id": "M1", "direction": "transport", "name": "Выделенные полосы для автобусов", "type": "district", "price": 18, "lag": 2, "effects": { "T1": 6, "T2": 9 } },
+    { "id": "M2", "direction": "transport", "name": "Умные светофоры", "type": "city", "price": 22, "lag": 2, "effects": { "T1": 4, "B2": 3 } },
+    { "id": "M3", "direction": "transport", "name": "Линия ЛРТ / расширение", "type": "district", "price": 30, "lag": 4, "effects": { "T1": 16, "T2": 20, "E2": 4 } },
+    { "id": "M4", "direction": "ecology", "name": "Парк / сквер", "type": "district", "price": 15, "lag": 2, "effects": { "E1": 12, "E2": 3, "B1": 2 } },
+    { "id": "M5", "direction": "ecology", "name": "Чистое топливо для частного сектора", "type": "district", "price": 25, "lag": 3, "effects": { "E2": 14, "C1": 4 } },
+    { "id": "M6", "direction": "ecology", "name": "Озеленение и ветрозащитные полосы", "type": "city", "price": 20, "lag": 4, "effects": { "E1": 5, "E2": 3 } },
+    { "id": "M7", "direction": "social", "name": "Школа + детсад", "type": "district", "price": 24, "lag": 3, "effects": { "S1": 16 } },
+    { "id": "M8", "direction": "social", "name": "Центр семейного здоровья / поликлиника", "type": "district", "price": 20, "lag": 3, "effects": { "S2": 14 } },
+    { "id": "M9", "direction": "social", "name": "Дворовые спорт-хабы", "type": "district", "price": 10, "lag": 1, "effects": { "S1": 3, "S2": 3, "B1": 3 } },
+    { "id": "M10", "direction": "safety", "name": "Освещение и камеры Safe City", "type": "district", "price": 12, "lag": 1, "effects": { "B1": 12, "B2": 2 } },
+    { "id": "M11", "direction": "safety", "name": "Безопасные переходы и школьные зоны", "type": "district", "price": 10, "lag": 1, "effects": { "B2": 12, "T1": -2 } },
+    { "id": "M12", "direction": "services", "name": "Единая цифровая платформа обращений", "type": "city", "price": 14, "lag": 1, "effects": { "C2": 5 } },
+    { "id": "M13", "direction": "services", "name": "Модернизация тепло- и водосетей", "type": "district", "price": 28, "lag": 4, "effects": { "C1": 18, "E2": 2 } },
+    { "id": "M14", "direction": "services", "name": "Аварийные бригады ЖКХ + оповещение", "type": "city", "price": 16, "lag": 1, "effects": { "C1": 5, "C2": 2 } }
+  ],
+  "synergies": [
+    { "measures": ["M1", "M2"], "criterion": "T1", "amount": 2, "target": "firstMeasureDistrict" },
+    { "measures": ["M10", "M12"], "criterion": "B1", "amount": 2, "target": "firstMeasureDistrict" },
+    { "measures": ["M5", "M6"], "criterion": "E2", "amount": 2, "target": "firstMeasureDistrict" }
+  ],
+  "constraints": [
+    { "measures": ["M1", "M3"], "scope": "global", "message": "M1 и M3 несовместимы: выберите BRT или ЛРТ." },
+    { "measures": ["M4", "M7"], "scope": "sameDistrict", "message": "M4 и M7 нельзя разместить в одном районе." },
+    { "measures": ["M5", "M13"], "scope": "sameDistrict", "message": "M5 и M13 нельзя выбрать для одного района." }
+  ]
+}
