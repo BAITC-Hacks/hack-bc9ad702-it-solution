@@ -24,13 +24,17 @@
         <div>
           <p class="eyebrow">Городской AI-симулятор</p>
           <h1>Пять решений.<br /><em>Один город.</em></h1>
-          <p class="hero-copy">Распределите городской бюджет так, чтобы улучшить жизнь в условной Астане. Выберите по одной инициативе в каждом направлении.</p>
+          <p class="hero-copy">Распределите фиксированный бюджет так, чтобы улучшить жизнь в условной Астане. Выберите ровно 5 мер: не более двух из одного направления.</p>
         </div>
-        <aside class="budget-card" id="budget-card" aria-label="Состояние бюджета">
+        <aside class="budget-card" id="budget-card" aria-label="Состояние бюджета" title="После прокрутки карточку можно перетащить мышью">
           <span>Остаток бюджета</span>
-          <strong id="budget-left">100</strong><b> млн ₸</b>
+          <strong id="budget-left">100</strong><b> усл. ед.</b>
           <div class="budget-track"><span id="budget-progress"></span></div>
-          <small id="budget-caption">0 из 100 млн ₸ распределено</small>
+          <small id="budget-caption">0 из 100 усл. ед. распределено</small>
+          <section class="confirm-panel" id="confirm-panel" hidden>
+            <div><p class="eyebrow">Проверка сценария</p><h2>Все 5 решений выбраны</h2><p>Подтвердите сценарий, чтобы зафиксировать его и получить итоговую оценку AI.</p></div>
+            <button class="confirm-button" id="confirm-button">Подтвердить решения</button>
+          </section>
         </aside>
       </section>
 
@@ -41,12 +45,25 @@
 
       <section class="decisions" aria-labelledby="decisions-title">
         <div class="section-heading"><div><p class="eyebrow">Ваши действия</p><h2 id="decisions-title">Выберите ровно 5 мероприятий</h2></div><p><span id="selection-count">0</span> из 5 решений выбрано</p></div>
+        <div class="demo-scenarios" aria-labelledby="demo-title">
+          <div><p class="eyebrow">Быстрый старт</p><h3 id="demo-title">Готовые сценарии для демонстрации</h3><p>Загрузите набор решений, затем измените районы или инициативы вручную.</p></div>
+          <div class="demo-buttons">
+            <button type="button" data-preset="balanced">Сбалансированный</button>
+            <button type="button" data-preset="nura">Фокус на Нуру</button>
+            <button type="button" data-preset="digital">Цифровой город</button>
+          </div>
+        </div>
         <div id="decision-grid" class="decision-grid"></div>
       </section>
 
-      <section class="confirm-panel" id="confirm-panel" hidden>
-        <div><p class="eyebrow">Проверка сценария</p><h2>Все 5 решений выбраны</h2><p>Подтвердите сценарий, чтобы зафиксировать его и получить итоговую оценку AI.</p></div>
-        <button class="confirm-button" id="confirm-button">Подтвердить решения</button>
+      <section class="scenario-transition" id="scenario-transition" hidden aria-live="assertive" aria-label="Расчёт сценария">
+        <div class="transition-card">
+          <div class="transition-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+          <p class="eyebrow">Проверка сценария</p>
+          <h2>Собираем<br />результат</h2>
+          <p>Проверяем бюджет, ограничения и влияние инициатив на районы.</p>
+          <div class="transition-steps"><span>Бюджет</span><span>Районы</span><span>Score</span></div>
+        </div>
       </section>
 
       <section class="result-panel" id="result-panel" hidden aria-live="polite">
@@ -65,8 +82,30 @@
               <div class="dashboard-list" id="district-effects"></div>
             </section>
           </div>
+          <section class="schematic-map" aria-labelledby="map-title">
+            <div class="map-heading">
+              <div>
+                <p class="eyebrow">Визуализация сценария</p>
+                <h3 id="map-title">Схема районов</h3>
+              </div>
+              <p>Цвет показывает итоговый индекс района. Наведите курсор на район, чтобы увидеть его результат.</p>
+            </div>
+            <div class="map-legend" aria-label="Легенда карты"><span><i class="map-dot map-dot-low"></i>ниже 50</span><span><i class="map-dot map-dot-mid"></i>50–59</span><span><i class="map-dot map-dot-high"></i>60 и выше</span></div>
+            <div id="district-map" class="district-map" aria-live="polite"></div>
+            <p class="map-note">Схема условная: она визуализирует синтетические районы модели, а не реальные административные границы Астаны.</p>
+          </section>
           <h3 class="ai-title">AI-анализ сценария</h3>
+          <div class="ai-loader" id="ai-loader" hidden><span></span><span></span><span></span><b>AI анализирует сценарий…</b></div>
           <div class="ai-analysis" id="ai-analysis"></div>
+          <section class="scenario-library" aria-labelledby="library-title">
+            <div class="library-heading"><div><p class="eyebrow">Сравнение команд</p><h3 id="library-title">Сохранённые сценарии</h3></div><p>Сохраните до трёх результатов в этом браузере.</p></div>
+            <div class="save-scenario">
+              <label for="team-name">Название команды</label>
+              <div><input id="team-name" maxlength="40" placeholder="Например, Команда 1" /><button id="save-scenario" type="button">Сохранить результат</button></div>
+              <small id="save-message" aria-live="polite"></small>
+            </div>
+            <div class="scenario-comparison" id="scenario-comparison"></div>
+          </section>
         </div>
         <div class="score"><strong id="score-value">—</strong><span>/ 100</span></div>
         <button class="reset-button" id="reset-button">Начать заново</button>
