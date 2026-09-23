@@ -8,7 +8,8 @@ if not exist ".venv\Scripts\python.exe" (
 )
 
 echo.
-echo The simulator is available at http://localhost:8000
+set APP_PORT=8080
+echo The simulator is available at http://localhost:8080
 echo Press Ctrl+C to stop the local server.
 echo.
-".venv\Scripts\python.exe" -m http.server 8000
+".venv\Scripts\python.exe" server.py

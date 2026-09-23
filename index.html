@@ -13,10 +13,10 @@
   <body>
     <main class="app-shell">
       <header class="topbar">
-        <a class="brand" href="#top" aria-label="Аким на 5 часов">
+        <button class="brand" id="home-button" type="button" aria-label="Вернуться на главный экран">
           <span class="brand-mark">A</span>
           <span>Аким на 5 часов</span>
-        </a>
+        </button>
         <span class="status"><i></i> Сценарий активен</span>
       </header>
 
@@ -50,11 +50,19 @@
         <div id="decision-grid" class="decision-grid"></div>
       </section>
 
+      <section class="confirm-panel" id="confirm-panel" hidden>
+        <div><p class="eyebrow">Проверка сценария</p><h2>Все 5 решений выбраны</h2><p>Подтвердите сценарий, чтобы зафиксировать его и получить итоговую оценку AI.</p></div>
+        <button class="confirm-button" id="confirm-button">Подтвердить решения</button>
+      </section>
+
       <section class="result-panel" id="result-panel" hidden aria-live="polite">
         <div>
-          <p class="eyebrow">Предварительный результат</p>
+          <p class="eyebrow">Итог сценария</p>
           <h2>Astana Quality<br />of Life Score</h2>
-          <p id="result-text">Выберите инициативы, чтобы увидеть оценку.</p>
+          <p id="result-text">AI готовит объяснение результата.</p>
+          <div class="result-details" id="result-details"></div>
+          <h3 class="ai-title">AI-анализ сценария</h3>
+          <div class="ai-analysis" id="ai-analysis"></div>
         </div>
         <div class="score"><strong id="score-value">—</strong><span>/ 100</span></div>
         <button class="reset-button" id="reset-button">Начать заново</button>
