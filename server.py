@@ -102,6 +102,79 @@ def normalize_analysis_units(text: str) -> str:
     )
 
 
+def deterministic_analysis(payload: dict) -> str:
+    """Explain a calculated scenario without relying on an external AI service."""
+    simulation = payload.get("simulation", {})
+    before = simulation.get("before", {})
+    after = simulation.get("after", {})
+    selections = payload.get("selections", [])
+    district_deltas = simulation.get("districtDeltas", {})
+    district_scores = after.get("districtScores", {})
+    contributions = simulation.get("contributions", [])
+
+    def number(value: object) -> str:
+        try:
+            return f"{float(value):.2f}"
+        except (TypeError, ValueError):
+            return "—"
+
+    def signed_number(value: object) -> str:
+        try:
+            return f"{float(value):+.2f}"
+        except (TypeError, ValueError):
+            return "—"
+
+    titles = [item.get("title", "инициатива") for item in selections]
+    measures_text = ", ".join(titles)
+    strongest_district = max(district_deltas, key=district_deltas.get, default=None)
+    strongest_delta = district_deltas.get(strongest_district, 0)
+    weakest_district = min(district_scores, key=district_scores.get, default=None)
+    selected_districts = [item.get("districts") for item in selections if item.get("districts") not in (None, "город")]
+    district_counts = {district: selected_districts.count(district) for district in set(selected_districts)}
+    most_focused_district = max(district_counts, key=district_counts.get, default=None)
+    has_tradeoff = any(
+        value < 0
+        for contribution in contributions
+        for value in contribution.get("effects", {}).values()
+    )
+
+    strengths = f"Выбраны меры: {measures_text}."
+    if strongest_district:
+        strengths += f" Самый заметный прирост получает район {strongest_district}: {signed_number(strongest_delta)} пункта."
+    if simulation.get("synergies"):
+        strengths += " Совместный эффект выбранных мер дополнительно усиливает сценарий."
+
+    risks = []
+    critical_after = after.get("critical", 0)
+    critical_before = before.get("critical", 0)
+    if critical_after:
+        risks.append(f"Критические проблемы остаются: {critical_before} → {critical_after}.")
+    if most_focused_district and district_counts[most_focused_district] >= 3:
+        risks.append(f"Большая часть районных вложений сосредоточена в районе {most_focused_district}.")
+    if has_tradeoff:
+        risks.append("Одна из мер улучшает безопасность ценой небольшого компромисса в транспорте.")
+    if not risks:
+        risks.append("Критические показатели устранены, а вложения распределены без выраженной концентрации.")
+
+    if weakest_district:
+        recommendation = f"Чтобы усилить сценарий, замените или перенесите одну из районных мер в {weakest_district} — это самый слабый район после расчёта."
+    else:
+        recommendation = "Чтобы усилить сценарий, замените одну из выбранных мер на инициативу для наиболее слабого направления."
+
+    return (
+        "Итог\n"
+        f"Score изменился с {number(before.get('score'))} до {number(after.get('score'))} "
+        f"({signed_number(simulation.get('delta'))}). Использовано {payload.get('spent')} из "
+        f"{payload.get('budget')} условных единиц.\n\n"
+        "Что сработало\n"
+        f"{strengths}\n\n"
+        "Риски\n"
+        f"{' '.join(risks)}\n\n"
+        "Что улучшить\n"
+        f"{recommendation}"
+    )
+
+
 def analyze(payload: dict) -> str:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
@@ -162,11 +235,15 @@ class AppHandler(SimpleHTTPRequestHandler):
                 raise ValueError("Для анализа нужно выбрать 5 инициатив.")
             if not payload.get("simulation"):
                 raise ValueError("Сначала необходимо рассчитать математическую модель.")
-            response, status = {"analysis": analyze(payload)}, HTTPStatus.OK
+            response, status = {"analysis": analyze(payload), "fallback": False}, HTTPStatus.OK
         except (ValueError, json.JSONDecodeError) as error:
             response, status = {"error": str(error)}, HTTPStatus.BAD_REQUEST
         except RuntimeError as error:
-            response, status = {"error": str(error)}, HTTPStatus.SERVICE_UNAVAILABLE
+            print(f"Using deterministic analysis: {error}")
+            response, status = {
+                "analysis": deterministic_analysis(payload),
+                "fallback": True,
+            }, HTTPStatus.OK
 
         data = json.dumps(response, ensure_ascii=False).encode("utf-8")
         self.send_response(status)

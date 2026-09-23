@@ -16,12 +16,14 @@ let resultConfirmed = false;
 let simulation = null;
 let isBudgetFloating = false;
 let budgetDrag = null;
+let isConfirming = false;
 
 const grid = document.querySelector('#decision-grid');
 const metricGrid = document.querySelector('#metric-grid');
 const budgetCard = document.querySelector('#budget-card');
 const confirmPanel = document.querySelector('#confirm-panel');
 const resultPanel = document.querySelector('#result-panel');
+const scenarioTransition = document.querySelector('#scenario-transition');
 const confirmButton = document.querySelector('#confirm-button');
 const homeButton = document.querySelector('#home-button');
 const scenarioStatus = document.querySelector('#scenario-status');
@@ -142,6 +144,7 @@ function render() {
   const validationError = validate(current);
   const canConfirm = selections.size === MODEL.requiredDecisions && !validationError && !resultConfirmed;
   confirmPanel.hidden = !canConfirm;
+  confirmButton.disabled = isConfirming;
   budgetCard.classList.toggle('ready-to-confirm', canConfirm);
   resultPanel.hidden = !resultConfirmed;
   if (resultConfirmed && simulation) {
@@ -195,12 +198,21 @@ grid.addEventListener('click', (event) => {
 });
 
 confirmButton.addEventListener('click', async () => {
+  if (isConfirming) return;
+  isConfirming = true;
+  confirmButton.disabled = true;
+  scenarioTransition.hidden = false;
+  document.body.classList.add('is-transitioning');
+  await new Promise((resolve) => setTimeout(resolve, 1050));
   simulation = simulateScenario();
   resultConfirmed = true;
   scenarioStatus.classList.add('completed');
   scenarioStatus.innerHTML = '<i></i> Сценарий завершён';
   document.body.classList.add('results-mode');
   render();
+  scenarioTransition.hidden = true;
+  document.body.classList.remove('is-transitioning');
+  isConfirming = false;
   const spent = spentBudget();
   const payloadSelections = Array.from(selections.values()).map((item) => ({ id: item.measure.id, direction: DIRECTIONS.find((direction) => direction.id === item.measure.direction).name, title: item.measure.name, price: item.measure.price, districts: item.district || 'город', lag: item.measure.lag, ahpPriority: measurePriority(item.measure) }));
   const resultText = document.querySelector('#result-text');
@@ -214,7 +226,9 @@ confirmButton.addEventListener('click', async () => {
     const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ selections: payloadSelections, budget: BUDGET, spent, simulation }) });
     const data = response.headers.get('content-type') && response.headers.get('content-type').includes('application/json') ? await response.json() : null;
     if (!response.ok || !data || !data.analysis) throw new Error((data && data.error) || 'Сервер не вернул AI-анализ.');
-    resultText.textContent = 'МАИ-модель: ' + simulation.formula + '. Использовано ' + spent + ' из ' + BUDGET + ' ' + BUDGET_UNIT;
+    resultText.textContent = data.fallback
+      ? 'МАИ-модель рассчитана. Показано объяснение по правилам модели: использовано ' + spent + ' из ' + BUDGET + ' ' + BUDGET_UNIT
+      : 'МАИ-модель: ' + simulation.formula + '. Использовано ' + spent + ' из ' + BUDGET + ' ' + BUDGET_UNIT;
     analysis.textContent = data.analysis;
   } catch (error) {
     resultText.textContent = 'МАИ-модель рассчитана: ' + simulation.formula + '. Использовано ' + spent + ' из ' + BUDGET + ' ' + BUDGET_UNIT;
