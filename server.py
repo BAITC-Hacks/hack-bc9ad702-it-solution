@@ -11,7 +11,11 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from model_engine import ENGINE, ModelValidationError
+
 ROOT = Path(__file__).resolve().parent
+MAX_REQUEST_BYTES = 64 * 1024
+PUBLIC_PATHS = {"/", "/index.html", "/styles.css", "/app.js", "/data/model-data.json"}
 
 
 def load_dotenv() -> None:
@@ -175,6 +179,19 @@ def deterministic_analysis(payload: dict) -> str:
     )
 
 
+def build_verified_payload(raw_selections: object) -> dict:
+    """Recalculate a client scenario from canonical JSON data on the server."""
+    normalized = ENGINE.validate(raw_selections, require_complete=True)
+    simulation = ENGINE.simulate(normalized)
+    return {
+        "selections": ENGINE.describe_selections(normalized),
+        "selectionRequest": normalized,
+        "budget": ENGINE.model["budget"],
+        "spent": ENGINE.spent(normalized),
+        "simulation": simulation,
+    }
+
+
 def analyze(payload: dict) -> str:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
@@ -224,19 +241,42 @@ def analyze(payload: dict) -> str:
 
 
 class AppHandler(SimpleHTTPRequestHandler):
+    def send_json(self, response: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
+        data = json.dumps(response, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def do_GET(self) -> None:
+        request_path = self.path.split("?", 1)[0]
+        if request_path == "/api/model-summary":
+            self.send_json(ENGINE.baseline())
+            return
+        if request_path not in PUBLIC_PATHS:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        super().do_GET()
+
     def do_POST(self) -> None:
-        if self.path != "/api/analyze":
+        if self.path not in {"/api/simulate", "/api/analyze"}:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         try:
             content_length = int(self.headers.get("Content-Length", "0"))
-            payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
-            if len(payload.get("selections", [])) != 5:
-                raise ValueError("Для анализа нужно выбрать 5 инициатив.")
-            if not payload.get("simulation"):
-                raise ValueError("Сначала необходимо рассчитать математическую модель.")
-            response, status = {"analysis": analyze(payload), "fallback": False}, HTTPStatus.OK
-        except (ValueError, json.JSONDecodeError) as error:
+            if content_length <= 0 or content_length > MAX_REQUEST_BYTES:
+                raise ModelValidationError("Размер запроса недопустим.")
+            request_payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            if not isinstance(request_payload, dict):
+                raise ModelValidationError("Тело запроса должно быть JSON-объектом.")
+            payload = build_verified_payload(request_payload.get("selections"))
+            if self.path == "/api/simulate":
+                response = payload
+            else:
+                response = {"analysis": analyze(payload), "fallback": False}
+            status = HTTPStatus.OK
+        except (ModelValidationError, ValueError, json.JSONDecodeError) as error:
             response, status = {"error": str(error)}, HTTPStatus.BAD_REQUEST
         except RuntimeError as error:
             print(f"Using deterministic analysis: {error}")
@@ -245,12 +285,7 @@ class AppHandler(SimpleHTTPRequestHandler):
                 "fallback": True,
             }, HTTPStatus.OK
 
-        data = json.dumps(response, ensure_ascii=False).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
+        self.send_json(response, status)
 
 
 if __name__ == "__main__":

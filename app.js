@@ -1,5 +1,5 @@
-// All editable parameters live in data/model-data.json. The app contains only
-// the calculation and interaction logic, so another city can use the same UI.
+// All editable parameters live in data/model-data.json. The browser manages
+// interaction only; the canonical model is calculated by model_engine.py.
 let MODEL;
 let BUDGET;
 let BUDGET_UNIT;
@@ -8,7 +8,6 @@ let CRITERIA;
 let DIRECTIONS;
 let DISTRICTS;
 let MEASURES;
-let SYNERGIES;
 let CONSTRAINTS;
 
 const selections = new Map();
@@ -27,37 +26,36 @@ const scenarioTransition = document.querySelector('#scenario-transition');
 const confirmButton = document.querySelector('#confirm-button');
 const homeButton = document.querySelector('#home-button');
 const scenarioStatus = document.querySelector('#scenario-status');
+const scenarioComparison = document.querySelector('#scenario-comparison');
+const saveScenarioButton = document.querySelector('#save-scenario');
+const teamNameInput = document.querySelector('#team-name');
+const saveMessage = document.querySelector('#save-message');
 let districtNames = [];
+
+const STORAGE_KEY = 'akim-saved-scenarios-v1';
+const PRESETS = {
+  balanced: [
+    { id: 'M2', district: null }, { id: 'M4', district: 'Нура' },
+    { id: 'M8', district: 'Нура' }, { id: 'M10', district: 'Байконур' },
+    { id: 'M12', district: null },
+  ],
+  nura: [
+    { id: 'M1', district: 'Нура' }, { id: 'M5', district: 'Сарыарка' },
+    { id: 'M7', district: 'Нура' }, { id: 'M10', district: 'Нура' },
+    { id: 'M12', district: null },
+  ],
+  digital: [
+    { id: 'M2', district: null }, { id: 'M6', district: null },
+    { id: 'M9', district: 'Нура' }, { id: 'M10', district: 'Нура' },
+    { id: 'M12', district: null },
+  ],
+};
 
 const round = (value) => Math.round(value * 100) / 100;
 const spentBudget = () => Array.from(selections.values()).reduce((sum, item) => sum + item.measure.price, 0);
 const effectiveEffects = (measure) => Object.fromEntries(Object.entries(measure.effects).map(([key, value]) => [key, value * (HORIZON - measure.lag) / HORIZON]));
 const measurePriority = (measure) => round(Object.entries(effectiveEffects(measure)).reduce((sum, [criterion, value]) => sum + CRITERIA[criterion].weight * value, 0));
-const cloneValues = () => Object.fromEntries(districtNames.map((name) => [name, structuredClone(DISTRICTS[name].values)]));
-
-function districtScore(values) {
-  return Object.entries(CRITERIA).reduce((total, [criterion, config]) => total + values[criterion] * config.weight, 0);
-}
-
-function summarize(values) {
-  // Keep full precision until the final result. Rounding an individual district
-  // before calculating the city average would slightly change the MАИ score.
-  const districtScores = Object.fromEntries(districtNames.map((name) => [name, districtScore(values[name])]));
-  const average = districtNames.reduce((total, name) => total + DISTRICTS[name].population * districtScores[name], 0);
-  const minimum = Math.min(...Object.values(districtScores));
-  const critical = districtNames.reduce((total, name) => total + Object.values(values[name]).filter((value) => value < MODEL.criticalThreshold).length, 0);
-  const score = MODEL.scoreWeights.average * average + MODEL.scoreWeights.minimum * minimum - MODEL.scoreWeights.criticalPenalty * critical;
-  return { districtScores, average: round(average), minimum: round(minimum), critical, score: round(score) };
-}
-
-function directionScore(values, direction) {
-  const directionWeight = direction.criteria.reduce((total, criterion) => total + CRITERIA[criterion].weight, 0);
-  return districtNames.reduce((cityTotal, district) => {
-    const districtDirectionScore = direction.criteria.reduce((total, criterion) => total + values[district][criterion] * CRITERIA[criterion].weight, 0) / directionWeight;
-    return cityTotal + DISTRICTS[district].population * districtDirectionScore;
-  }, 0);
-}
-
+const selectionRequest = () => Array.from(selections.values()).map((item) => ({ id: item.measure.id, district: item.district }));
 function validate(candidateSelections) {
   if (candidateSelections.length > MODEL.requiredDecisions) return 'Можно выбрать ровно ' + MODEL.requiredDecisions + ' мероприятий.';
   const total = candidateSelections.reduce((sum, item) => sum + item.measure.price, 0);
@@ -79,44 +77,9 @@ function validate(candidateSelections) {
   return '';
 }
 
-function simulateScenario() {
-  const beforeValues = cloneValues();
-  const afterValues = cloneValues();
-  const contributions = [];
-  for (const item of selections.values()) {
-    const targets = item.measure.type === 'city' ? districtNames : [item.district];
-    const effects = effectiveEffects(item.measure);
-    for (const district of targets) {
-      for (const [criterion, effect] of Object.entries(effects)) {
-        afterValues[district][criterion] = Math.min(100, Math.max(0, afterValues[district][criterion] + effect));
-      }
-    }
-    contributions.push({ id: item.measure.id, name: item.measure.name, district: item.measure.type === 'city' ? 'город' : item.district, lag: item.measure.lag, priority: measurePriority(item.measure), effects: Object.fromEntries(Object.entries(effects).map(([key, value]) => [key, round(value)])) });
-  }
-
-  const selected = Object.fromEntries(Array.from(selections.values()).map((item) => [item.measure.id, item]));
-  const synergies = [];
-  const applySynergy = (rule) => {
-    const [left, right] = rule.measures;
-    if (!selected[left] || !selected[right]) return;
-    const target = rule.target === 'firstMeasureDistrict' ? selected[left].district : districtNames[0];
-    afterValues[target][rule.criterion] = Math.min(100, afterValues[target][rule.criterion] + rule.amount);
-    synergies.push({ pair: left + ' + ' + right, district: target, criterion: rule.criterion, amount: rule.amount });
-  };
-  SYNERGIES.forEach(applySynergy);
-
-  const before = summarize(beforeValues);
-  const after = summarize(afterValues);
-  const directionScores = Object.fromEntries(DIRECTIONS.map((direction) => [direction.id, round(directionScore(afterValues, direction))]));
-  const districtDeltas = Object.fromEntries(districtNames.map((name) => [name, round(after.districtScores[name] - before.districtScores[name])]));
-  const criterionDeltas = Object.fromEntries(districtNames.map((name) => [name, Object.fromEntries(Object.keys(CRITERIA).map((criterion) => [criterion, round(afterValues[name][criterion] - beforeValues[name][criterion])]))]));
-  return { formula: MODEL.formula, horizonQuarters: HORIZON, before, after, delta: round(after.score - before.score), directionScores, districtDeltas, criterionDeltas, contributions, synergies };
-}
-
-function renderCityPulse() {
-  const baseline = cloneValues();
+function renderCityPulse(baseline) {
   metricGrid.innerHTML = DIRECTIONS.map((direction) => {
-    return '<article><span>' + direction.name + '</span><strong>' + round(directionScore(baseline, direction)) + '</strong><small>Стартовый уровень</small></article>';
+    return '<article><span>' + direction.name + '</span><strong>' + baseline.directionScores[direction.id] + '</strong><small>Стартовый уровень</small></article>';
   }).join('');
 }
 
@@ -165,6 +128,63 @@ function renderResultDetails(spent) {
   document.querySelector('#direction-scores').innerHTML = DIRECTIONS.map((direction) => '<div class="dashboard-item"><span>' + direction.name + '</span><b>' + simulation.directionScores[direction.id] + '/100</b></div>').join('');
   document.querySelector('#district-effects').innerHTML = districtNames.map((district) => '<div class="dashboard-item"><span>' + district + '</span><b>' + round(simulation.after.districtScores[district]) + '/100</b><small>' + (simulation.districtDeltas[district] >= 0 ? '+' : '') + simulation.districtDeltas[district] + '</small></div>').join('');
   renderDistrictMap();
+  renderSavedScenarios();
+}
+
+function readSavedScenarios() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.slice(0, 3) : [];
+  } catch (error) {
+    console.warn('Не удалось прочитать сохранённые сценарии.', error);
+    return [];
+  }
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, (symbol) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[symbol]);
+}
+
+function renderSavedScenarios() {
+  const saved = readSavedScenarios();
+  if (!saved.length) {
+    scenarioComparison.innerHTML = '<p class="empty-comparison">Пока нет сохранённых результатов.</p>';
+    return;
+  }
+  const bestScore = Math.max(...saved.map((item) => item.score));
+  scenarioComparison.innerHTML = saved.map((item) => {
+    const measures = item.selections.map((entry) => entry.id + (entry.district ? ' · ' + entry.district : '')).join(', ');
+    return '<article class="comparison-card' + (item.score === bestScore && saved.length > 1 ? ' is-best' : '') + '"><div><span>' + escapeHtml(item.name) + '</span>' + (item.score === bestScore && saved.length > 1 ? '<small>Лучший Score</small>' : '') + '</div><strong>' + Number(item.score).toFixed(2) + '</strong><p>' + item.spent + '/' + BUDGET + ' ' + BUDGET_UNIT + ' · ' + (item.delta >= 0 ? '+' : '') + item.delta + '</p><em>' + escapeHtml(measures) + '</em><button type="button" data-remove-scenario="' + escapeHtml(item.id) + '" aria-label="Удалить сценарий ' + escapeHtml(item.name) + '">Удалить</button></article>';
+  }).join('');
+}
+
+function saveCurrentScenario() {
+  const name = teamNameInput.value.trim();
+  if (!name) {
+    saveMessage.textContent = 'Введите название команды.';
+    teamNameInput.focus();
+    return;
+  }
+  const saved = readSavedScenarios();
+  const existingIndex = saved.findIndex((item) => item.name.toLowerCase() === name.toLowerCase());
+  const record = {
+    id: existingIndex >= 0 ? saved[existingIndex].id : Date.now().toString(36),
+    name,
+    score: simulation.after.score,
+    delta: simulation.delta,
+    spent: spentBudget(),
+    selections: selectionRequest(),
+  };
+  if (existingIndex >= 0) saved[existingIndex] = record;
+  else if (saved.length < 3) saved.push(record);
+  else {
+    saveMessage.textContent = 'Можно сравнить не более трёх сценариев. Удалите один из сохранённых.';
+    return;
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+  saveMessage.textContent = existingIndex >= 0 ? 'Результат команды обновлён.' : 'Сценарий сохранён для сравнения.';
+  teamNameInput.value = '';
+  renderSavedScenarios();
 }
 
 function districtMapColor(score) {
@@ -195,6 +215,31 @@ function renderDistrictMap() {
   }).join('');
   document.querySelector('#district-map').innerHTML = '<svg viewBox="0 0 600 380" role="img" aria-label="Схема пяти районов и их итоговых индексов"><path class="map-river" d="M15 210 C110 165 175 230 255 188 S415 142 585 190"></path>' + map + '<text class="map-caption" x="300" y="372">Синтетическая карта сценария</text></svg>';
 }
+
+document.querySelector('.demo-scenarios').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-preset]');
+  if (!button) return;
+  selections.clear();
+  for (const item of PRESETS[button.dataset.preset]) {
+    const measure = MEASURES.find((candidate) => candidate.id === item.id);
+    selections.set(item.id, { measure, district: item.district });
+  }
+  resultConfirmed = false;
+  simulation = null;
+  document.querySelector('#ai-analysis').textContent = '';
+  render();
+  budgetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+saveScenarioButton.addEventListener('click', saveCurrentScenario);
+scenarioComparison.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-remove-scenario]');
+  if (!button) return;
+  const saved = readSavedScenarios().filter((item) => item.id !== button.dataset.removeScenario);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+  saveMessage.textContent = 'Сценарий удалён из сравнения.';
+  renderSavedScenarios();
+});
 
 grid.addEventListener('change', (event) => {
   const select = event.target.closest('select[data-measure]');
@@ -234,7 +279,24 @@ confirmButton.addEventListener('click', async () => {
   scenarioTransition.hidden = false;
   document.body.classList.add('is-transitioning');
   await new Promise((resolve) => setTimeout(resolve, 1050));
-  simulation = simulateScenario();
+  const requestSelections = selectionRequest();
+  try {
+    const simulationResponse = await fetch('/api/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selections: requestSelections }),
+    });
+    const verified = simulationResponse.headers.get('content-type') && simulationResponse.headers.get('content-type').includes('application/json') ? await simulationResponse.json() : null;
+    if (!simulationResponse.ok || !verified || !verified.simulation) throw new Error((verified && verified.error) || 'Сервер не рассчитал сценарий.');
+    simulation = verified.simulation;
+  } catch (error) {
+    scenarioTransition.hidden = true;
+    document.body.classList.remove('is-transitioning');
+    isConfirming = false;
+    confirmButton.disabled = false;
+    alert('Сценарий не подтверждён: ' + error.message);
+    return;
+  }
   resultConfirmed = true;
   scenarioStatus.classList.add('completed');
   scenarioStatus.innerHTML = '<i></i> Сценарий завершён';
@@ -244,7 +306,6 @@ confirmButton.addEventListener('click', async () => {
   document.body.classList.remove('is-transitioning');
   isConfirming = false;
   const spent = spentBudget();
-  const payloadSelections = Array.from(selections.values()).map((item) => ({ id: item.measure.id, direction: DIRECTIONS.find((direction) => direction.id === item.measure.direction).name, title: item.measure.name, price: item.measure.price, districts: item.district || 'город', lag: item.measure.lag, ahpPriority: measurePriority(item.measure) }));
   const resultText = document.querySelector('#result-text');
   const analysis = document.querySelector('#ai-analysis');
   const loader = document.querySelector('#ai-loader');
@@ -253,7 +314,7 @@ confirmButton.addEventListener('click', async () => {
   loader.hidden = false;
   resultPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   try {
-    const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ selections: payloadSelections, budget: BUDGET, spent, simulation }) });
+    const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ selections: requestSelections }) });
     const data = response.headers.get('content-type') && response.headers.get('content-type').includes('application/json') ? await response.json() : null;
     if (!response.ok || !data || !data.analysis) throw new Error((data && data.error) || 'Сервер не вернул AI-анализ.');
     resultText.textContent = data.fallback
@@ -335,7 +396,6 @@ function configureModel(data) {
   DIRECTIONS = data.directions;
   DISTRICTS = data.districts;
   MEASURES = data.measures;
-  SYNERGIES = data.synergies;
   CONSTRAINTS = data.constraints;
   districtNames = Object.keys(DISTRICTS);
 }
@@ -349,10 +409,13 @@ function showDataLoadError(error) {
 
 async function initialize() {
   try {
-    const response = await fetch('data/model-data.json', { cache: 'no-store' });
-    if (!response.ok) throw new Error('HTTP ' + response.status);
-    configureModel(await response.json());
-    renderCityPulse();
+    const [modelResponse, baselineResponse] = await Promise.all([
+      fetch('data/model-data.json', { cache: 'no-store' }),
+      fetch('/api/model-summary', { cache: 'no-store' }),
+    ]);
+    if (!modelResponse.ok || !baselineResponse.ok) throw new Error('HTTP ' + modelResponse.status + '/' + baselineResponse.status);
+    configureModel(await modelResponse.json());
+    renderCityPulse(await baselineResponse.json());
     render();
   } catch (error) {
     showDataLoadError(error);

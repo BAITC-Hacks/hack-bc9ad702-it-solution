@@ -45,6 +45,14 @@
 
       <section class="decisions" aria-labelledby="decisions-title">
         <div class="section-heading"><div><p class="eyebrow">Ваши действия</p><h2 id="decisions-title">Выберите ровно 5 мероприятий</h2></div><p><span id="selection-count">0</span> из 5 решений выбрано</p></div>
+        <div class="demo-scenarios" aria-labelledby="demo-title">
+          <div><p class="eyebrow">Быстрый старт</p><h3 id="demo-title">Готовые сценарии для демонстрации</h3><p>Загрузите набор решений, затем измените районы или инициативы вручную.</p></div>
+          <div class="demo-buttons">
+            <button type="button" data-preset="balanced">Сбалансированный</button>
+            <button type="button" data-preset="nura">Фокус на Нуру</button>
+            <button type="button" data-preset="digital">Цифровой город</button>
+          </div>
+        </div>
         <div id="decision-grid" class="decision-grid"></div>
       </section>
 
@@ -89,6 +97,15 @@
           <h3 class="ai-title">AI-анализ сценария</h3>
           <div class="ai-loader" id="ai-loader" hidden><span></span><span></span><span></span><b>AI анализирует сценарий…</b></div>
           <div class="ai-analysis" id="ai-analysis"></div>
+          <section class="scenario-library" aria-labelledby="library-title">
+            <div class="library-heading"><div><p class="eyebrow">Сравнение команд</p><h3 id="library-title">Сохранённые сценарии</h3></div><p>Сохраните до трёх результатов в этом браузере.</p></div>
+            <div class="save-scenario">
+              <label for="team-name">Название команды</label>
+              <div><input id="team-name" maxlength="40" placeholder="Например, Команда 1" /><button id="save-scenario" type="button">Сохранить результат</button></div>
+              <small id="save-message" aria-live="polite"></small>
+            </div>
+            <div class="scenario-comparison" id="scenario-comparison"></div>
+          </section>
         </div>
         <div class="score"><strong id="score-value">—</strong><span>/ 100</span></div>
         <button class="reset-button" id="reset-button">Начать заново</button>

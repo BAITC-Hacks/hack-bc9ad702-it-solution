@@ -18,9 +18,9 @@ echo.
 echo OpenAI API key was not found.
 set /p "APP_OPENAI_KEY=Paste your OpenAI API key: "
 if not defined APP_OPENAI_KEY (
-  echo API key was not entered. The server was not started.
-  pause
-  exit /b 1
+  echo OPENAI_MODEL=gpt-5-mini> ".env"
+  echo API key was not entered. Starting with deterministic analysis.
+  goto :start_server
 )
 
 (
