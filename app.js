@@ -409,13 +409,14 @@ function showDataLoadError(error) {
 
 async function initialize() {
   try {
-    const [modelResponse, baselineResponse] = await Promise.all([
-      fetch('data/model-data.json', { cache: 'no-store' }),
-      fetch('/api/model-summary', { cache: 'no-store' }),
-    ]);
-    if (!modelResponse.ok || !baselineResponse.ok) throw new Error('HTTP ' + modelResponse.status + '/' + baselineResponse.status);
-    configureModel(await modelResponse.json());
-    renderCityPulse(await baselineResponse.json());
+    const modelResponse = await fetch('data/model-data.json', { cache: 'no-store' });
+    if (!modelResponse.ok) throw new Error('HTTP ' + modelResponse.status);
+    const modelData = await modelResponse.json();
+    configureModel(modelData);
+    if (!modelData.metadata || !modelData.metadata.baselineDirectionScores) {
+      throw new Error('В JSON отсутствуют стартовые оценки направлений.');
+    }
+    renderCityPulse({ directionScores: modelData.metadata.baselineDirectionScores });
     render();
   } catch (error) {
     showDataLoadError(error);

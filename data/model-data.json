@@ -4,7 +4,14 @@
     "name": "Аким на 5 часов",
     "source": "Версионируемая синтетическая конфигурация проекта",
     "dataType": "synthetic",
-    "scale": "0–100; чем больше значение, тем лучше"
+    "scale": "0–100; чем больше значение, тем лучше",
+    "baselineDirectionScores": {
+      "transport": 55.65,
+      "ecology": 55.55,
+      "social": 55.42,
+      "safety": 59.16,
+      "services": 58.92
+    }
   },
   "model": {
     "budget": 100,

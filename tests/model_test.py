@@ -34,6 +34,7 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(len(ENGINE.measures), 14)
         self.assertEqual(ENGINE.model["budget"], 100)
         self.assertEqual(ENGINE.summarize(baseline)["score"], 52.56)
+        self.assertEqual(ENGINE.data["metadata"]["baselineDirectionScores"], ENGINE.baseline()["directionScores"])
 
     def test_documented_control_scenario(self) -> None:
         result = ENGINE.simulate(CONTROL_SCENARIO)
