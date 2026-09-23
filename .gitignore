@@ -12,6 +12,7 @@ __pycache__/
 .env
 .vscode/
 .idea/
+.DS_Store
 
 # Frontend dependencies and build output
 node_modules/
