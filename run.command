@@ -66,6 +66,7 @@ if (( APP_PORT > 8090 )); then
 fi
 
 export APP_PORT
+export OPEN_BROWSER=1
 
 echo
 echo "The simulator is available at http://localhost:$APP_PORT"

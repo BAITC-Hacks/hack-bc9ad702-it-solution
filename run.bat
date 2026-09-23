@@ -45,6 +45,7 @@ if errorlevel 1 (
 echo The simulator is available at http://localhost:!APP_PORT!
 echo Press Ctrl+C to stop the local server.
 echo.
+set "OPEN_BROWSER=1"
 ".venv\Scripts\python.exe" server.py
 exit /b %errorlevel%
 

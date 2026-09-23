@@ -5,6 +5,10 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
+import sys
+import threading
+import webbrowser
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -16,6 +20,25 @@ from model_engine import ENGINE, ModelValidationError
 ROOT = Path(__file__).resolve().parent
 MAX_REQUEST_BYTES = 64 * 1024
 PUBLIC_PATHS = {"/", "/index.html", "/styles.css", "/app.js", "/data/model-data.json"}
+
+
+def open_app_browser(app_url: str) -> None:
+    """Open the simulator with the operating system's default browser."""
+    try:
+        if sys.platform == "darwin":
+            subprocess.Popen(
+                ["open", app_url],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        elif os.name == "nt":
+            os.startfile(app_url)  # type: ignore[attr-defined]
+        elif not webbrowser.open(app_url, new=2):
+            raise OSError("no default browser was found")
+        print(f"Browser opened: {app_url}")
+    except OSError as error:
+        print(f"Could not open the browser automatically: {error}")
+        print(f"Open this address manually: {app_url}")
 
 
 def load_dotenv() -> None:
@@ -195,7 +218,7 @@ def build_verified_payload(raw_selections: object) -> dict:
 def analyze(payload: dict) -> str:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        raise RuntimeError("OPENAI_API_KEY не найден. Добавьте ключ в .env и перезапустите run.bat.")
+        raise RuntimeError("OPENAI_API_KEY не найден. Добавьте ключ в .env и перезапустите приложение.")
 
     request_body = json.dumps({
         "model": os.environ.get("OPENAI_MODEL", "gpt-5-mini"),
@@ -214,7 +237,7 @@ def analyze(payload: dict) -> str:
         print(f"OpenAI API error: HTTP {error.code}")
         if error.code == HTTPStatus.UNAUTHORIZED:
             raise RuntimeError(
-                "OpenAI отклонил API-ключ. Проверьте новый OPENAI_API_KEY в .env и перезапустите run.bat."
+                "OpenAI отклонил API-ключ. Проверьте новый OPENAI_API_KEY в .env и перезапустите приложение."
             ) from error
         if error.code == HTTPStatus.TOO_MANY_REQUESTS:
             raise RuntimeError("Превышен лимит запросов OpenAI. Повторите попытку позже.") from error
@@ -295,5 +318,18 @@ if __name__ == "__main__":
     load_dotenv()
     os.chdir(ROOT)
     port = int(os.environ.get("APP_PORT", "8081"))
-    print(f"The simulator is available at http://localhost:{port}")
-    ThreadingHTTPServer(("", port), AppHandler).serve_forever()
+    app_url = f"http://localhost:{port}"
+    server = ThreadingHTTPServer(("", port), AppHandler)
+    print(f"The simulator is available at {app_url}")
+
+    if os.environ.get("OPEN_BROWSER") == "1":
+        browser_timer = threading.Timer(0.4, open_app_browser, args=(app_url,))
+        browser_timer.daemon = True
+        browser_timer.start()
+
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nServer stopped.")
+    finally:
+        server.server_close()
