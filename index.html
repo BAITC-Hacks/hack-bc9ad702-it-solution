@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="AI-симулятор городского управления «Аким на 5 часов»" />
+    <title>Аким на 5 часов</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="Аким на 5 часов">
+          <span class="brand-mark">A</span>
+          <span>Аким на 5 часов</span>
+        </a>
+        <span class="status"><i></i> Сценарий активен</span>
+      </header>
+
+      <section class="hero" id="top">
+        <div>
+          <p class="eyebrow">Городской AI-симулятор</p>
+          <h1>Пять решений.<br /><em>Один город.</em></h1>
+          <p class="hero-copy">Распределите городской бюджет так, чтобы улучшить жизнь в условной Астане. Выберите по одной инициативе в каждом направлении.</p>
+        </div>
+        <aside class="budget-card" aria-label="Состояние бюджета">
+          <span>Остаток бюджета</span>
+          <strong id="budget-left">100</strong><b> млн ₸</b>
+          <div class="budget-track"><span id="budget-progress"></span></div>
+          <small id="budget-caption">0 из 100 млн ₸ распределено</small>
+        </aside>
+      </section>
+
+      <section class="city-overview" aria-labelledby="city-title">
+        <div class="section-heading"><div><p class="eyebrow">Исходная ситуация</p><h2 id="city-title">Пульс города</h2></div><p>Слабые показатели отмечены акцентом. Решения меняют итоговую оценку сценария.</p></div>
+        <div class="metric-grid">
+          <article><span>Транспорт</span><strong>54</strong><small>Высокая нагрузка</small></article>
+          <article><span>Озеленение</span><strong>47</strong><small>Ниже целевого уровня</small></article>
+          <article><span>Соц. инфраструктура</span><strong>61</strong><small>Есть дефицит мест</small></article>
+          <article><span>Безопасность</span><strong>68</strong><small>Стабильная динамика</small></article>
+          <article><span>Городской сервис</span><strong>58</strong><small>Нужно ускорение</small></article>
+        </div>
+      </section>
+
+      <section class="decisions" aria-labelledby="decisions-title">
+        <div class="section-heading"><div><p class="eyebrow">Ваши действия</p><h2 id="decisions-title">Выберите 5 инициатив</h2></div><p><span id="selection-count">0</span> из 5 направлений выбрано</p></div>
+        <div id="decision-grid" class="decision-grid"></div>
+      </section>
+
+      <section class="result-panel" id="result-panel" hidden aria-live="polite">
+        <div>
+          <p class="eyebrow">Предварительный результат</p>
+          <h2>Astana Quality<br />of Life Score</h2>
+          <p id="result-text">Выберите инициативы, чтобы увидеть оценку.</p>
+        </div>
+        <div class="score"><strong id="score-value">—</strong><span>/ 100</span></div>
+        <button class="reset-button" id="reset-button">Начать заново</button>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

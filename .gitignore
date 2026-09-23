@@ -1,0 +1,18 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+
+# Environment variables and editor files
+.env
+.vscode/
+.idea/
+
+# Frontend dependencies and build output
+node_modules/
+dist/
