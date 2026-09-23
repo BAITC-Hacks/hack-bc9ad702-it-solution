@@ -30,25 +30,61 @@ def load_dotenv() -> None:
 
 def create_prompt(payload: dict) -> str:
     selections = payload.get("selections", [])
+    simulation = payload.get("simulation", {})
+    before = simulation.get("before", {})
+    after = simulation.get("after", {})
     formatted = "\n".join(
         f"- {item.get('direction')}: {item.get('title')} | {item.get('price')} млн ₸ | "
-        f"районы: {item.get('districts')} | эффект: +{item.get('impact')}"
+        f"районы: {item.get('districts')} | лаг: {item.get('lag')} кв. | МАИ-приоритет: {item.get('ahpPriority')}"
         for item in selections
     )
+    direction_scores = ", ".join(
+        f"{name}: {value}/100" for name, value in simulation.get("directionScores", {}).items()
+    )
+    district_deltas = ", ".join(
+        f"{name}: {value:+}" for name, value in simulation.get("districtDeltas", {}).items()
+    )
+    criterion_deltas = json.dumps(simulation.get("criterionDeltas", {}), ensure_ascii=False)
+    contributions = json.dumps(simulation.get("contributions", []), ensure_ascii=False)
+    synergies = json.dumps(simulation.get("synergies", []), ensure_ascii=False)
+    synergy_text = "; ".join(
+        f"{item.get('pair')}: {item.get('criterion')} +{item.get('amount')} в районе {item.get('district')}"
+        for item in simulation.get("synergies", [])
+    ) or "нет"
     return f"""Ты аналитик городского развития в учебном AI-симуляторе «Аким на 5 часов».
-Проанализируй только переданные синтетические данные. Не выдумывай фактов, статистики или эффектов.
+Все значения ниже присутствуют и уже рассчитаны детерминированной математической моделью.
+Не пересчитывай, не меняй и не выдумывай числа: твоя роль — объяснить уже рассчитанный сценарий.
+Запрещено писать, что Score, эффекты или результаты отсутствуют либо не возвращены.
 
-Итоговый Astana Quality of Life Score: {payload.get('score')} / 100.
+Метод: МАИ (AHP), 10 частных критериев. Веса: T1=0.10, T2=0.10, E1=0.09,
+E2=0.11, S1=0.11, S2=0.11, B1=0.09, B2=0.09, C1=0.10, C2=0.10.
+Горизонт модели: {simulation.get('horizonQuarters', 8)} кварталов; эффекты мер уменьшены на их лаг.
+Формула: {simulation.get('formula')}.
+Score до: {before.get('score')}; после: {after.get('score')}; изменение: {simulation.get('delta')}.
+D_avg после: {after.get('average')}; D_min после: {after.get('minimum')};
+критические показатели (<40): {before.get('critical')} → {after.get('critical')}.
 Использовано бюджета: {payload.get('spent')} из {payload.get('budget')} млн ₸.
-Суммарное моделируемое улучшение: +{payload.get('impact')} пунктов.
+Синергии: {synergy_text}.
+Оценки направлений: {direction_scores}.
+Изменение районных индексов: {district_deltas}.
+Изменения частных показателей по районам: {criterion_deltas}.
+Вклад каждой выбранной меры с учётом лага: {contributions}.
+Синергии: {synergies}.
 Решения:
 {formatted}
 
-Ответь по-русски, до 180 слов, с четырьмя короткими абзацами:
-1) вывод о сценарии и счёте;
-2) сильные стороны;
-3) риски и компромиссы;
-4) одна конкретная рекомендация.
+Ответ предназначен для городского управленца, а не для технического специалиста. Ответь
+по-русски, до 150 слов, с четырьмя короткими абзацами и простыми заголовками:
+«Итог», «Что сработало», «Риски», «Что улучшить».
+
+Покажи Score до, после и изменение, но не показывай формулы, коэффициенты, D_avg, D_min,
+N_crit, коды T1–C2, МАИ-приоритеты или JSON. Вместо них говори понятными словами:
+«средний уровень города», «самый слабый район», «критические проблемы».
+Называй меры человеческими названиями, а не только кодами M1–M14.
+
+Не предлагай потратить остаток бюджета на шестую меру: правила допускают ровно пять решений.
+Если сценарий можно улучшить, рекомендуй заменить одну из уже выбранных мер на другую или
+перенести районную меру в более нуждающийся район.
 """
 
 
@@ -110,6 +146,8 @@ class AppHandler(SimpleHTTPRequestHandler):
             payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
             if len(payload.get("selections", [])) != 5:
                 raise ValueError("Для анализа нужно выбрать 5 инициатив.")
+            if not payload.get("simulation"):
+                raise ValueError("Сначала необходимо рассчитать математическую модель.")
             response, status = {"analysis": analyze(payload)}, HTTPStatus.OK
         except (ValueError, json.JSONDecodeError) as error:
             response, status = {"error": str(error)}, HTTPStatus.BAD_REQUEST
@@ -127,6 +165,6 @@ class AppHandler(SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     load_dotenv()
     os.chdir(ROOT)
-    port = int(os.environ.get("APP_PORT", "8080"))
+    port = int(os.environ.get("APP_PORT", "8081"))
     print(f"The simulator is available at http://localhost:{port}")
     ThreadingHTTPServer(("", port), AppHandler).serve_forever()
