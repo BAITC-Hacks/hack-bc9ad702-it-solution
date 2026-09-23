@@ -16,3 +16,7 @@ __pycache__/
 # Frontend dependencies and build output
 node_modules/
 dist/
+
+# Методические исходники: приложение использует data/model-data.json
+Датасет районов.docx
+МАИ.xlsx
