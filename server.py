@@ -251,6 +251,9 @@ class AppHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:
         request_path = self.path.split("?", 1)[0]
+        if request_path == "/api/health":
+            self.send_json({"status": "ok", "app": "AstanaSIM AI", "apiVersion": 2})
+            return
         if request_path == "/api/model-summary":
             self.send_json(ENGINE.baseline())
             return
